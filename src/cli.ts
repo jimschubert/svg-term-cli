@@ -7,6 +7,7 @@ import * as os from "os";
 import * as path from "path";
 import * as tempy from "tempy";
 import * as parsers from "term-schemes";
+import {URL} from "url";
 
 const commandExists = require("command-exists");
 const meow = require("meow");
@@ -64,6 +65,7 @@ withCli(
   Examples
     $ cat rec.json | svg-term
     $ svg-term --cast 113643
+    $ svg-term --cast https://asciinema.org/a/113643
     $ svg-term --cast 113643 --out examples/parrot.svg
 `,
   {
@@ -136,7 +138,7 @@ async function main(cli: SvgTermCli) {
       if (!cli.flags.hasOwnProperty(name)) {
         return null;
       }
-      if (name === "cast" && typeof val === "number") {
+      if (name === "cast" && (typeof val === "number" || typeof val === "string")) {
         return null;
       }
       if (typeof val === "string") {
@@ -339,12 +341,20 @@ async function getInput(cli: SvgTermCli) {
     return String(await sander.readFile(cli.flags.in));
   }
 
-  if (cli.flags.cast) {
+  if (typeof cli.flags.cast === "number") {
     const response = await fetch(
       `https://asciinema.org/a/${cli.flags.cast}.cast?dl=true`
     );
 
     return response.text();
+  }
+
+  if (typeof cli.flags.cast === "string") {
+      const location = new URL(cli.flags.cast);
+      location.searchParams.set("dl", "true");
+      const response = await fetch(location.href);
+
+      return response.text();
   }
 
   return getStdin();
